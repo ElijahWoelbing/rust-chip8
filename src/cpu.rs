@@ -5,11 +5,12 @@ pub struct CPU {
     i: u16,
     pc: u16,
     sp: u8,
-    screen_buffer: [u8; 2048],
+    screen_buffer: [u32; 2048],
     memory: [u8; 0xfff],
     stack: [u16; 16],
     keys: [u8; 16],
     current_opcode: u16,
+    pub update_screen: bool,
 }
 
 impl CPU {
@@ -26,6 +27,7 @@ impl CPU {
             stack: [0; 16],
             keys: [0; 16],
             current_opcode: 0,
+            update_screen: false,
         }
     }
 
@@ -60,24 +62,18 @@ impl CPU {
 
     pub fn load_rom(&mut self, rom_path: &str) {
         let rom = std::fs::read(rom_path).expect("file not found");
+        println!("{}", rom.len());
         for (i, byte) in rom.into_iter().enumerate() {
             self.memory[0x200 + i] = byte;
         }
     }
 
-    pub fn emulate(&mut self) {
-        loop {
-            for i in 0..8 {
-                self.cycle();
-            }
-            std::thread::sleep(std::time::Duration::from_millis(16));
-        }
+    pub fn get_sreen_buffer(&self) -> &[u32; 2048] {
+        &self.screen_buffer
     }
 
-    fn cycle(&mut self) {
+    pub fn cycle(&mut self) {
         self.current_opcode = self.fetch_opcode();
-        println!("{:x}", self.current_opcode);
-
         match self.current_opcode & 0xf000 {
             0x0000 => match self.current_opcode & 0x00ff {
                 0x00e0 => self.cls(),
@@ -168,10 +164,10 @@ impl CPU {
         self.v[self.compute_y() as usize]
     }
 
-    fn write_Vx(&mut self, value: u8) {
+    fn write_vx(&mut self, value: u8) {
         self.v[self.compute_x() as usize] = value;
     }
-    fn write_Vy(&mut self, value: u8) {
+    fn write_vy(&mut self, value: u8) {
         self.v[self.compute_y() as usize] = value
     }
 
@@ -181,6 +177,7 @@ impl CPU {
         for byte in self.screen_buffer.iter_mut() {
             *byte = 0;
         }
+        self.update_screen = true;
     }
 
     // 00EE - RET
@@ -237,38 +234,38 @@ impl CPU {
     // Set Vx = kk.
     // The interpreter puts the value kk into register Vx.
     fn ld_vx_byte(&mut self) {
-        self.write_Vx(self.compute_kk());
+        self.write_vx(self.compute_kk());
     }
 
     // 7xkk - ADD Vx, byte
     // Set Vx = Vx + kk.
     // Adds the value kk to the value of register Vx, then stores the result in Vx.
     fn add_vx_byte(&mut self) {
-        self.write_Vx(self.read_vx() + self.compute_kk());
+        self.write_vx(self.read_vx().wrapping_add(self.compute_kk()));
     }
     // 8xy0 - LD Vx, Vy
     // Set Vx = Vy.
     // Stores the value of register Vy in register Vx.
     fn ld_vx_vy(&mut self) {
-        self.write_Vx(self.read_vy());
+        self.write_vx(self.read_vy());
     }
     // 8xy1 - OR Vx, Vy
     // Set Vx = Vx OR Vy.
     // Performs a bitwise OR on the values of Vx and Vy, then stores the result in Vx. A bitwise OR compares the corrseponding bits from two values, and if either bit is 1, then the same bit in the result is also 1. Otherwise, it is 0.
     fn or_vx_vy(&mut self) {
-        self.write_Vx(self.read_vx() | self.read_vy());
+        self.write_vx(self.read_vx() | self.read_vy());
     }
     // 8xy2 - AND Vx, Vy
     // Set Vx = Vx AND Vy.
     // Performs a bitwise AND on the values of Vx and Vy, then stores the result in Vx. A bitwise AND compares the corrseponding bits from two values, and if both bits are 1, then the same bit in the result is also 1. Otherwise, it is 0.
     fn and_vx_vy(&mut self) {
-        self.write_Vx(self.read_vx() & self.read_vy());
+        self.write_vx(self.read_vx() & self.read_vy());
     }
     // 8xy3 - XOR Vx, Vy
     // Set Vx = Vx XOR Vy.
     // Performs a bitwise exclusive OR on the values of Vx and Vy, then stores the result in Vx. An exclusive OR compares the corrseponding bits from two values, and if the bits are not both the same, then the corresponding bit in the result is set to 1. Otherwise, it is 0.
     fn xor_vx_vy(&mut self) {
-        self.write_Vx(self.read_vx() ^ self.read_vy());
+        self.write_vx(self.read_vx() ^ self.read_vy());
     }
     // 8xy4 - ADD Vx, Vy
     // Set Vx = Vx + Vy, set VF = carry.
@@ -280,7 +277,7 @@ impl CPU {
         } else {
             self.v[0xf] = 0;
         }
-        self.write_Vx(self.read_vx() + add as u8);
+        self.write_vx(self.read_vx().wrapping_add(self.read_vy()));
     }
 
     // 8xy5 - SUB Vx, Vy
@@ -292,14 +289,14 @@ impl CPU {
         } else {
             self.v[0xf] = 0;
         }
-        self.write_Vx(self.read_vx().wrapping_sub(self.read_vy()));
+        self.write_vx(self.read_vx().wrapping_sub(self.read_vy()));
     }
     // 8xy6 - SHR Vx {, Vy}
     // Set Vx = Vx SHR 1.
     // If the least-significant bit of Vx is 1, then VF is set to 1, otherwise 0. Then Vx is divided by 2.
     fn shr_vx_vy(&mut self) {
         self.v[0xf] = self.read_vx() & 0x1;
-        self.write_Vx(self.read_vx() >> 1);
+        self.write_vx(self.read_vx() >> 1);
     }
     // 8xy7 - SUBN Vx, Vy
     // Set Vx = Vy - Vx, set VF = NOT borrow.
@@ -310,14 +307,14 @@ impl CPU {
         } else {
             self.v[0xf] = 0;
         }
-        self.write_Vx(self.read_vy() - self.read_vx());
+        self.write_vx(self.read_vy().wrapping_sub(self.read_vx()));
     }
     // 8xyE - SHL Vx {, Vy}
     // Set Vx = Vx SHL 1.
     // If the most-significant bit of Vx is 1, then VF is set to 1, otherwise to 0. Then Vx is multiplied by 2.
     fn shl_vx_vy(&mut self) {
         self.v[0xf] = (self.read_vx() >> 7) & 1;
-        self.write_Vx(self.read_vx() << 1);
+        self.write_vx(self.read_vx() << 1);
     }
     // 9xy0 - SNE Vx, Vy
     // Skip next instruction if Vx != Vy.
@@ -345,7 +342,7 @@ impl CPU {
     // Set Vx = random byte AND kk.
     // The interpreter generates a random number from 0 to 255, which is then ANDed with the value kk. The results are stored in Vx. See instruction 8xy2 for more information on AND.
     fn rnd_vx_byte(&mut self) {
-        self.write_Vx(self.compute_kk() & rand::random::<u8>());
+        self.write_vx(self.compute_kk() & rand::random::<u8>());
     }
 
     // Dxyn - DRW Vx, Vy, nibble
@@ -364,17 +361,15 @@ impl CPU {
             pixel = self.memory[(self.i + yline) as usize];
             for xline in 0..8 {
                 if (pixel & (0x80 >> xline)) != 0 {
-                    if self.screen_buffer
-                        [(regester_x + xline + ((regester_y + yline) * 64)) as usize]
-                        == 1
-                    {
+                    let index = (regester_x + xline + ((regester_y + yline) * 64)) as usize % 2048;
+                    if self.screen_buffer[index] == 0xffffff {
                         self.v[0xf] = 1;
                     }
-                    self.screen_buffer
-                        [(regester_x + xline + ((regester_y + yline) * 64)) as usize] ^= 1;
+                    self.screen_buffer[index] ^= 0xffffff;
                 }
             }
         }
+        self.update_screen = true;
     }
     // Ex9E - SKP Vx
     // Skip next instruction if key with the value of Vx is pressed.
@@ -397,7 +392,7 @@ impl CPU {
     // The value of DT is placed into Vx.
 
     fn ld_vx_dt(&mut self) {
-        self.write_Vx(self.dt);
+        self.write_vx(self.dt);
     }
 
     // Fx0A - LD Vx, K
@@ -431,7 +426,7 @@ impl CPU {
     // Set i = i + Vx.
     // The values of i and Vx are added, and the results are stored in i.
     fn add_i_vx(&mut self) {
-        let added = self.i + self.read_vx() as u16;
+        let added = self.i.wrapping_sub(self.read_vx() as u16);
         self.v[0xf] = match added > 0xfff {
             true => 1,
             false => 0,
@@ -475,5 +470,17 @@ impl CPU {
             self.v[i as usize] = self.memory[(self.i + i) as usize];
         }
         self.i = x + 1;
+    }
+
+   pub fn sub_dt(&mut self) {
+       if self.dt > 0 {
+        self.dt -= 1;
+       }
+    }
+
+   pub fn sub_st(&mut self) {
+       if self.st > 0 {
+            self.st -= 1;
+       }
     }
 }
