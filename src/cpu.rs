@@ -75,9 +75,9 @@ impl CPU {
     pub fn cycle(&mut self) {
         self.current_opcode = self.fetch_opcode();
         match self.current_opcode & 0xf000 {
-            0x0000 => match self.current_opcode & 0x00ff {
-                0x00e0 => self.cls(),
-                0x00ee => self.ret(),
+            0x0000 => match self.current_opcode & 0x000f {
+                0x0000 => self.cls(),
+                0x000e => self.ret(),
                 _ => panic!("invalid opcode {:x}", self.current_opcode),
             },
             0x1000 => self.jp(),
