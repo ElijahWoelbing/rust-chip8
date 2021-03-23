@@ -352,20 +352,20 @@ impl CPU {
     // If the sprite is positioned so part of it is outside the coordinates of the display, it wraps around to the opposite side of the screen_buffer.
     // See instruction 8xy3 for more information on XOR, and section 2.4, Display, for more information on the Chip-8 screen_buffer and sprites.
     fn drw_vx_vy_nibble(&mut self) {
-        let regester_x = self.read_vx() as u16;
-        let regester_y = self.read_vy() as u16;
-        let height = self.compute_n();
-        let mut pixel;
+        let x_pos = self.read_vx() as u16;
+        let y_pos = self.read_vy() as u16;
+        let sprite_bytes = self.compute_n();
+        let mut sprite_byte;
         self.v[0xF] = 0;
-        for yline in 0..height {
-            pixel = self.memory[(self.i + yline) as usize];
-            for xline in 0..8 {
-                if (pixel & (0x80 >> xline)) != 0 {
-                    let index = (regester_x + xline + ((regester_y + yline) * 64)) as usize % 2048;
-                    if self.screen_buffer[index] == 0xffffff {
+        for sprite_row in 0..sprite_bytes{
+            sprite_byte = self.memory[(self.i + sprite_row) as usize];
+            for sprite_col in 0..8 {
+                if (sprite_byte & (0x80 >> sprite_col)) != 0 {
+                    let pixel_pos = (x_pos + sprite_col + ((y_pos + sprite_row) * 64)) as usize % 2048;
+                    if self.screen_buffer[pixel_pos] == 0xffffff {
                         self.v[0xf] = 1;
                     }
-                    self.screen_buffer[index] ^= 0xffffff;
+                    self.screen_buffer[pixel_pos] ^= 0xffffff;
                 }
             }
         }
