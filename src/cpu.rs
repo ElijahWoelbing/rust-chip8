@@ -62,18 +62,18 @@ impl CPU {
 
     pub fn load_rom(&mut self, rom_path: &str) {
         let rom = std::fs::read(rom_path).expect("file not found");
-        println!("{}", rom.len());
         for (i, byte) in rom.into_iter().enumerate() {
             self.memory[0x200 + i] = byte;
         }
     }
 
-    pub fn get_sreen_buffer(&self) -> &[u32; 2048] {
+    pub fn get_screen_buffer(&self) -> &[u32; 2048] {
         &self.screen_buffer
     }
 
     pub fn cycle(&mut self) {
         self.current_opcode = self.fetch_opcode();
+
         match self.current_opcode & 0xf000 {
             0x0000 => match self.current_opcode & 0x000f {
                 0x0000 => self.cls(),
@@ -146,11 +146,11 @@ impl CPU {
     }
 
     fn compute_x(&self) -> u16 {
-        self.current_opcode & 0x0f00 >> 8
+        (self.current_opcode & 0x0f00) >> 8
     }
 
     fn compute_y(&self) -> u16 {
-        self.current_opcode & 0x00f0 >> 4
+        (self.current_opcode & 0x00f0) >> 4
     }
 
     fn compute_kk(&self) -> u8 {
@@ -166,9 +166,6 @@ impl CPU {
 
     fn write_vx(&mut self, value: u8) {
         self.v[self.compute_x() as usize] = value;
-    }
-    fn write_vy(&mut self, value: u8) {
-        self.v[self.compute_y() as usize] = value
     }
 
     //     00E0 - CLS
@@ -357,11 +354,12 @@ impl CPU {
         let sprite_bytes = self.compute_n();
         let mut sprite_byte;
         self.v[0xF] = 0;
-        for sprite_row in 0..sprite_bytes{
+        for sprite_row in 0..sprite_bytes {
             sprite_byte = self.memory[(self.i + sprite_row) as usize];
             for sprite_col in 0..8 {
                 if (sprite_byte & (0x80 >> sprite_col)) != 0 {
-                    let pixel_pos = (x_pos + sprite_col + ((y_pos + sprite_row) * 64)) as usize % 2048;
+                    let pixel_pos =
+                        (x_pos + sprite_col + ((y_pos + sprite_row) * 64)) as usize % 2048;
                     if self.screen_buffer[pixel_pos] == 0xffffff {
                         self.v[0xf] = 1;
                     }
@@ -472,15 +470,15 @@ impl CPU {
         self.i = x + 1;
     }
 
-   pub fn sub_dt(&mut self) {
-       if self.dt > 0 {
-        self.dt -= 1;
-       }
+    pub fn sub_dt(&mut self) {
+        if self.dt > 0 {
+            self.dt -= 1;
+        }
     }
 
-   pub fn sub_st(&mut self) {
-       if self.st > 0 {
+    pub fn sub_st(&mut self) {
+        if self.st > 0 {
             self.st -= 1;
-       }
+        }
     }
 }
