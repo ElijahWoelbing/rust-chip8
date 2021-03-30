@@ -8,7 +8,7 @@ pub struct CPU {
     screen_buffer: [u32; 2048],
     memory: [u8; 0xfff],
     stack: [u16; 16],
-    keys: [u8; 16],
+    pub keys: [u8; 16],
     current_opcode: u16,
     pub update_screen: bool,
 }
