@@ -5,4 +5,4 @@ A Chip8 emulator written in rust using minifb for display
 
 ![maze image](https://github.com/ElijahWoelbing/rust-chip8/blob/master/images/chip8-maze.png)
 
-![blinky image](https://github.com/ElijahWoelbing/rust-chip8/blob/master/chip8-blinky.png)
+![blinky image](https://github.com/ElijahWoelbing/rust-chip8/blob/master/images/chip8-blinky.png)
