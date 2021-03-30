@@ -42,7 +42,7 @@ impl CPU {
             self.keys[i] = 0;
             self.v[i] = 0;
         }
-        //clear memory
+        // clear memory
         for byte in self.memory.iter_mut() {
             *byte = 0;
         }
@@ -122,7 +122,9 @@ impl CPU {
                 _ => panic!("invalid opcode {:x}", self.current_opcode),
             },
 
-            _ => {}
+            _ => {
+                unreachable!("how did you get here");
+            }
         }
     }
 
@@ -168,7 +170,7 @@ impl CPU {
         self.v[self.compute_x() as usize] = value;
     }
 
-    //     00E0 - CLS
+    // 00E0 - CLS
     // Clear the display.
     fn cls(&mut self) {
         for byte in self.screen_buffer.iter_mut() {
@@ -360,10 +362,10 @@ impl CPU {
                 if (sprite_byte & (0x80 >> sprite_col)) != 0 {
                     let pixel_pos =
                         (x_pos + sprite_col + ((y_pos + sprite_row) * 64)) as usize % 2048;
-                    if self.screen_buffer[pixel_pos] == 0xffffff {
+                    if self.screen_buffer[pixel_pos] == 0x00FF00 {
                         self.v[0xf] = 1;
                     }
-                    self.screen_buffer[pixel_pos] ^= 0xffffff;
+                    self.screen_buffer[pixel_pos] ^= 0x00FF00;
                 }
             }
         }
@@ -424,7 +426,7 @@ impl CPU {
     // Set i = i + Vx.
     // The values of i and Vx are added, and the results are stored in i.
     fn add_i_vx(&mut self) {
-        let added = self.i.wrapping_sub(self.read_vx() as u16);
+        let added = self.i.wrapping_add(self.read_vx() as u16);
         self.v[0xf] = match added > 0xfff {
             true => 1,
             false => 0,
@@ -443,7 +445,7 @@ impl CPU {
     // The interpreter takes the decimal value of Vx, and places the hundreds digit in memory at location in i, the tens digit at location i+1, and the ones digit at location i+2.
     fn ld_b_vx(&mut self) {
         let vx = self.read_vx();
-        self.memory[self.i as usize] = (vx / 100) % 100;
+        self.memory[self.i as usize] = vx / 100;
         self.memory[(self.i + 1) as usize] = (vx / 10) % 10;
         self.memory[(self.i + 2) as usize] = vx % 10;
     }
@@ -456,7 +458,6 @@ impl CPU {
         for i in 0..=x {
             self.memory[(self.i + i) as usize] = self.v[i as usize];
         }
-        self.i = x + 1;
     }
 
     // Fx65 - LD Vx, [i]
@@ -467,7 +468,6 @@ impl CPU {
         for i in 0..=x {
             self.v[i as usize] = self.memory[(self.i + i) as usize];
         }
-        self.i = x + 1;
     }
 
     pub fn sub_dt(&mut self) {

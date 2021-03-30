@@ -21,7 +21,7 @@ fn main() {
             borderless: false,
             title: true,
             resize: false,
-            scale: minifb::Scale::X4,
+            scale: minifb::Scale::X8,
             scale_mode: minifb::ScaleMode::AspectRatioStretch,
             topmost: false,
             transparency: false,
@@ -35,57 +35,38 @@ fn main() {
         }
     };
     loop {
-        window.get_keys_released().map(|keys| {
-            for t in keys {
-                match t {
-                    minifb::Key::Key1 => cpu.keys[0] = 0,
-                    minifb::Key::Key2 => cpu.keys[1] = 0,
-                    minifb::Key::Key3 => cpu.keys[2] = 0,
-                    minifb::Key::Key4 => cpu.keys[3] = 0,
-                    minifb::Key::Q => cpu.keys[4] = 0,
-                    minifb::Key::W => cpu.keys[5] = 0,
-                    minifb::Key::E => cpu.keys[6] = 0,
-                    minifb::Key::R => cpu.keys[7] = 0,
-                    minifb::Key::A => cpu.keys[8] = 0,
-                    minifb::Key::S => cpu.keys[9] = 0,
-                    minifb::Key::D => cpu.keys[10] = 0,
-                    minifb::Key::F => cpu.keys[11] = 0,
-                    minifb::Key::Z => cpu.keys[12] = 0,
-                    minifb::Key::X => cpu.keys[13] = 0,
-                    minifb::Key::C => cpu.keys[14] = 0,
-                    minifb::Key::V => cpu.keys[15] = 0,
-                    _ => (),
-                }
-            }
-        });
-
-        window.get_keys_pressed(minifb::KeyRepeat::No).map(|keys| {
-            for t in keys {
-                match t {
-                    minifb::Key::Key1 => cpu.keys[0] = 1,
-                    minifb::Key::Key2 => cpu.keys[1] = 1,
-                    minifb::Key::Key3 => cpu.keys[2] = 1,
-                    minifb::Key::Key4 => cpu.keys[3] = 1,
-                    minifb::Key::Q => cpu.keys[4] = 1,
-                    minifb::Key::W => cpu.keys[5] = 1,
-                    minifb::Key::E => cpu.keys[6] = 1,
-                    minifb::Key::R => cpu.keys[7] = 1,
-                    minifb::Key::A => cpu.keys[8] = 1,
-                    minifb::Key::S => cpu.keys[9] = 1,
-                    minifb::Key::D => cpu.keys[10] = 1,
-                    minifb::Key::F => cpu.keys[11] = 1,
-                    minifb::Key::Z => cpu.keys[12] = 1,
-                    minifb::Key::X => cpu.keys[13] = 1,
-                    minifb::Key::C => cpu.keys[14] = 1,
-                    minifb::Key::V => cpu.keys[15] = 1,
-                    _ => (),
-                }
-            }
-        });
+        // emulate 500hz cpu speed
         for _ in 0..8 {
             cpu.cycle();
-        }
 
+            let keys: [minifb::Key; 16] = [
+                minifb::Key::Key1,
+                minifb::Key::Key2,
+                minifb::Key::Key3,
+                minifb::Key::Key4,
+                minifb::Key::Q,
+                minifb::Key::W,
+                minifb::Key::E,
+                minifb::Key::R,
+                minifb::Key::A,
+                minifb::Key::S,
+                minifb::Key::D,
+                minifb::Key::F,
+                minifb::Key::Z,
+                minifb::Key::X,
+                minifb::Key::C,
+                minifb::Key::V,
+            ];
+
+            for (i, key) in keys.iter().enumerate() {
+                if window.is_key_down(*key) {
+                    cpu.keys[i] = 1;
+                } else {
+                    cpu.keys[i] = 0;
+                }
+            }
+        }
+        // (1 second / 60 = .016) emulate 60hz
         std::thread::sleep(std::time::Duration::from_millis(16));
         if cpu.update_screen {
             if window
@@ -96,6 +77,7 @@ fn main() {
             }
             cpu.update_screen = false;
         }
+        // update timers
         cpu.sub_dt();
         cpu.sub_st();
     }
